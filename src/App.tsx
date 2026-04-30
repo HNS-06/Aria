@@ -130,7 +130,7 @@ export default function App() {
           </div>
         </div>
 
-        <nav className="flex-1 p-6 space-y-3 overflow-y-auto">
+        <nav className="flex-1 p-6 space-y-3 overflow-y-auto futuristic-scroll pr-2">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -209,7 +209,7 @@ export default function App() {
           </div>
         </header>
 
-        <section className="p-8 flex-1 relative overflow-y-auto max-w-7xl mx-auto w-full">
+        <section className="p-8 flex-1 relative overflow-y-auto futuristic-scroll max-w-7xl mx-auto w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
