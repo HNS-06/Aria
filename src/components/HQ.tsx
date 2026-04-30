@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, Target, Flame, Trophy, ChevronRight, BrainCircuit, Loader2, Sparkles, Clock, AlertTriangle, ShieldCheck, Activity, Play, Pause, RotateCcw } from 'lucide-react';
+import { Zap, Target, Flame as FlameIcon, Trophy, ChevronRight, BrainCircuit, Loader2, Sparkles, Clock, AlertTriangle, ShieldCheck, Activity, Play, Pause, RotateCcw, Coffee } from 'lucide-react';
 import { generateStudyPlan, analyzeMissionProgress, type StudyPlan, type MissionAnalysis } from '../services/geminiService';
 import { useGlobal } from '../context/GlobalContext';
 
 export default function HQ() {
-  const { user, missions, timer, startTimer, pauseTimer, resetTimer } = useGlobal();
+  const { user, missions, timer, startTimer, pauseTimer, resetTimer, extendBreak } = useGlobal();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [plan, setPlan] = useState<StudyPlan | null>(null);
@@ -90,7 +90,7 @@ export default function HQ() {
           className="glass-panel p-6 bg-cyan-400/10"
         >
           <div className="flex justify-between items-start mb-4">
-            <Flame className="text-cyan-400" size={24} />
+            <FlameIcon className="text-cyan-400" size={24} />
             <span className="text-[10px] font-black uppercase text-cyan-400 tracking-tighter bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20">On Fire</span>
           </div>
           <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-1">Current Streak</p>
@@ -233,8 +233,12 @@ export default function HQ() {
                       {formatTime(timer.timeLeft)}
                     </div>
                     <div className="flex-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pomodoro Protocol</p>
-                      <p className="font-bold text-sm italic">{timer.isActive ? 'Focus Active...' : 'Ready for Duty'}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        {timer.isBreak ? 'Neural Recovery Protocol' : 'Tactical Focus Unit'}
+                      </p>
+                      <p className="font-bold text-sm italic">
+                        {timer.isActive ? (timer.isBreak ? 'Regenerating...' : 'Focus Active...') : 'Ready for Duty'}
+                      </p>
                       <div className="flex gap-2 mt-2">
                         <button 
                           onClick={timer.isActive ? pauseTimer : startTimer}
@@ -264,7 +268,36 @@ export default function HQ() {
                     {timer.isActive ? 'Pause Protocol' : 'Initiate focus'}
                   </button>
                 </div>
-             </section>
+
+                <AnimatePresence>
+                  {timer.showBreakPrompt && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="absolute inset-0 z-20 bg-black/95 backdrop-blur-md rounded-xl p-6 flex flex-col items-center justify-center text-center border-4 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]"
+                    >
+                      <Coffee className="text-cyan-400 mb-4 animate-bounce" size={40} />
+                      <h4 className="font-lexend font-black text-xl uppercase italic mb-2">Recovery Phase Terminated</h4>
+                      <p className="text-xs text-slate-400 font-bold uppercase mb-6 leading-tight">Neural capacity optimized. Do you require a 5-minute tactical extension?</p>
+                      <div className="flex gap-4 w-full">
+                        <button 
+                          onClick={() => extendBreak(true)}
+                          className="flex-1 py-3 bg-cyan-400 text-black font-lexend font-black uppercase text-xs border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+                        >
+                          Yes (Extend)
+                        </button>
+                        <button 
+                          onClick={() => extendBreak(false)}
+                          className="flex-1 py-3 bg-slate-800 text-slate-400 font-lexend font-black uppercase text-xs border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+                        >
+                          No (Resume)
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </section>
              <section className="glass-panel p-6 bg-slate-900/50 flex flex-col h-full">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-lexend font-black uppercase text-lg italic flex items-center gap-2">
@@ -391,7 +424,7 @@ export default function HQ() {
              <div className="space-y-4">
                 {[
                   { label: 'Neural Surge', desc: `${user?.sessionsDone || 0} sessions locked`, icon: Zap, color: 'text-cyan-400' },
-                  { label: 'Unstoppable', desc: `${user?.streak || 0} day streak`, icon: Flame, color: 'text-orange-500' },
+                  { label: 'Unstoppable', desc: `${user?.streak || 0} day streak`, icon: FlameIcon, color: 'text-orange-500' },
                   { label: 'Dominance', desc: `${user?.focusScore || 0}% focus score`, icon: Trophy, color: 'text-yellow-400' }
                 ].map((feat, i) => (
                   <div key={i} className="flex gap-3 items-center p-3 bg-black/40 rounded-xl border border-white/5">

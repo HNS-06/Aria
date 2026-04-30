@@ -21,7 +21,7 @@ import {
   PlusCircle,
   Network,
   StickyNote,
-  Flame
+  Flame as FlameIcon
 } from 'lucide-react';
 import { Tab } from './types.ts';
 import { useGlobal } from './context/GlobalContext';
@@ -197,7 +197,7 @@ export default function App() {
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-black rounded-full text-[8px] flex items-center justify-center font-black text-white">0</span>
             </button>
             <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border-2 border-black">
-              <Flame size={20} className="text-orange-500 fill-orange-500" />
+              <FlameIcon size={20} className="text-orange-500 fill-orange-500" />
               <span className="font-bangers text-lg text-orange-500 tracking-wider">{user.streak}</span>
             </div>
             <div className="h-10 w-10 rounded-full border-2 border-violet-500 overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer hover:scale-105 transition-transform">

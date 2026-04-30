@@ -82,7 +82,7 @@ export async function generateAudioBriefing(text: string): Promise<string> {
   return retry(async () => {
     const prompt = `Say in an authoritative, futuristic commander voice: "Attention Hero Scholar. Here is your tactical briefing." Then read this summary: ${text}`;
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-8b",
       contents: [{ parts: [{ text: prompt }] }],
     });
     return response.text || `Briefing: ${text}`;
@@ -99,7 +99,7 @@ export async function generateFlashcards(topic: string, concepts: string[]): Pro
       Concepts: ${concepts.join(', ')}`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-8b",
         contents: [{ parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
@@ -153,7 +153,7 @@ export async function summarizeIntel(content: string): Promise<IntelSummary> {
     return await retry(async () => {
       const prompt = `Extract intelligence from: ${content}`;
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-8b",
         contents: [{ parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
@@ -182,7 +182,7 @@ export async function analyzeMissionProgress(missions: Mission[]): Promise<Missi
     return await retry(async () => {
       const prompt = `Diagnostic Scan: ${JSON.stringify(missions)}`;
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-8b",
         contents: [{ parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
@@ -230,7 +230,7 @@ export async function generateStudyPlan(missions: Mission[], overallXP: number, 
     return await retry(async () => {
       const prompt = `Generate study plan: Level ${level}, XP ${overallXP}, Missions ${JSON.stringify(missions)}, Time ${focusTime}m`;
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-8b",
         contents: [{ parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
@@ -271,7 +271,7 @@ export async function generateModuleContent(moduleName: string, syllabus: string
     Provide comprehensive notes, topics, definitions, equations, and key points.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-8b",
       contents: [{ parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",

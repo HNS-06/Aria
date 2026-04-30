@@ -61,8 +61,11 @@ export interface TimerState {
   isActive: boolean;
   timeLeft: number; // in seconds
   mode: StudyMode;
+  isBreak: boolean;
+  showBreakPrompt: boolean;
   endTime: number | null; // Timestamp (ms) when timer should end
   duration: number; // in seconds
+  accumulatedFocus: number; // total focus seconds in current session
 }
 
 interface GlobalContextType {
@@ -98,6 +101,7 @@ interface GlobalContextType {
   fullFactoryReset: () => void;
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
+  extendBreak: (extend: boolean) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType>(null!);
@@ -168,8 +172,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isActive: false,
       timeLeft: (settings.durations[StudyMode.DEEP_FOCUS] || 50) * 60,
       mode: StudyMode.DEEP_FOCUS,
+      isBreak: false,
+      showBreakPrompt: false,
       endTime: null,
-      duration: (settings.durations[StudyMode.DEEP_FOCUS] || 50) * 60
+      duration: (settings.durations[StudyMode.DEEP_FOCUS] || 50) * 60,
+      accumulatedFocus: 0
     };
   });
 
@@ -259,14 +266,24 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const duration = prev.duration;
       const minutes = Math.floor(duration / 60);
       
-      logSession({
-        startTime: prev.endTime ? prev.endTime - duration * 1000 : Date.now() - duration * 1000,
-        endTime: Date.now(),
-        duration,
-        mode: prev.mode,
-        completed: true
-      });
+      if (!prev.isBreak) {
+        logSession({
+          startTime: prev.endTime ? prev.endTime - duration * 1000 : Date.now() - duration * 1000,
+          endTime: Date.now(),
+          duration,
+          mode: prev.mode,
+          completed: true
+        });
 
+        updateXp(minutes * 10);
+      }
+
+      if (prev.isBreak) {
+        // Break ended, show prompt for 5 more minutes
+        return { ...prev, isActive: false, timeLeft: 0, endTime: null, showBreakPrompt: true };
+      }
+
+      // If it was a focus unit and it finished normally
       if (settings.notificationsEnabled) {
         addNotification({
           title: "Session Completed!",
@@ -277,11 +294,34 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       }
 
-      updateXp(minutes * 10);
       warnedRef.current = false;
       return { ...prev, isActive: false, timeLeft: 0, endTime: null };
     });
   }, [logSession, updateXp, addNotification, settings.notificationsEnabled]);
+
+  const extendBreak = (extend: boolean) => {
+    setTimer(prev => {
+      if (extend) {
+        const extension = 5 * 60; // 5 more minutes
+        return { 
+          ...prev, 
+          isActive: true, 
+          timeLeft: extension, 
+          duration: extension,
+          endTime: Date.now() + extension * 1000,
+          isBreak: true,
+          showBreakPrompt: false 
+        };
+      } else {
+        // Continue rest of time (if any) or reset
+        const remainingInOriginal = prev.timeLeft; 
+        if (remainingInOriginal > 0) {
+           return { ...prev, isBreak: false, showBreakPrompt: false, isActive: true, endTime: Date.now() + remainingInOriginal * 1000 };
+        }
+        return { ...prev, isBreak: false, showBreakPrompt: false, isActive: false, timeLeft: 0 };
+      }
+    });
+  };
 
   useEffect(() => {
     if (timer.isActive && timer.endTime) {
@@ -304,7 +344,34 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
           handleTimerComplete();
         } else {
-          setTimer(prev => ({ ...prev, timeLeft: remaining }));
+          setTimer(prev => {
+            let nextAccumulated = prev.accumulatedFocus;
+            if (!prev.isBreak) {
+              nextAccumulated += 1;
+              // Every 20 minutes (1200s) trigger a break
+              if (nextAccumulated >= 1200) {
+                if (settings.notificationsEnabled) {
+                  addNotification({
+                    title: "Tactical Break Required",
+                    message: "20 minutes of focus reached. Initiating 5-minute recovery.",
+                    icon: Coffee,
+                    type: 'TIMER',
+                    priority: 'HIGH'
+                  });
+                }
+                const breakDuration = 5 * 60;
+                return { 
+                  ...prev, 
+                  isBreak: true, 
+                  timeLeft: breakDuration, 
+                  duration: breakDuration,
+                  endTime: Date.now() + breakDuration * 1000,
+                  accumulatedFocus: 0 
+                };
+              }
+            }
+            return { ...prev, timeLeft: remaining, accumulatedFocus: nextAccumulated };
+          });
         }
       }, 1000);
     } else {
@@ -366,7 +433,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const resetTimer = () => {
     const duration = getDurationForMode(timer.mode);
-    setTimer(prev => ({ ...prev, isActive: false, timeLeft: duration, endTime: null, duration }));
+    setTimer(prev => ({ 
+      ...prev, 
+      isActive: false, 
+      timeLeft: duration, 
+      endTime: null, 
+      duration, 
+      isBreak: false, 
+      showBreakPrompt: false,
+      accumulatedFocus: 0 
+    }));
   };
 
   const setTimerMode = (mode: StudyMode) => {
@@ -517,7 +593,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addTask, updateTask, deleteTask, addKnowledgeNode, deleteKnowledgeNode,
       addNote, deleteNote, analytics,
       settings, updateSettings, resetSettings, fullFactoryReset,
-      activeTab, setActiveTab
+      activeTab, setActiveTab, extendBreak
     }}>
       {children}
     </GlobalContext.Provider>
