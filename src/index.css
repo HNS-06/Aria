@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bangers&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-lexend: "Lexend", sans-serif;
+  --font-plus-jakarta: "Plus Jakarta Sans", sans-serif;
+  --font-bangers: "Bangers", cursive;
+
+  --color-surface-container-lowest: #0b0d1c;
+  --color-surface-container-low: #191a2a;
+  --color-surface-container: #1d1e2e;
+  --color-surface-container-high: #272939;
+  --color-surface-container-highest: #323444;
+  
+  --color-primary-container: #7b5cf0;
+  --color-secondary-container: #00f2d1;
+  --color-tertiary-container: #9e6d00;
+  
+  --color-secondary-fixed: #26fedc;
+}
+
+@layer base {
+  body {
+    @apply bg-[#101221] text-[#e1e1f7] font-plus-jakarta antialiased;
+  }
+}
+
+@layer utilities {
+  .halftone-bg {
+    background-image: radial-gradient(rgba(123, 92, 240, 0.1) 1.5px, transparent 0);
+    background-size: 15px 15px;
+  }
+
+  .comic-border {
+    @apply border-2 border-black;
+  }
+
+  .hard-shadow {
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .glass-panel {
+    @apply bg-[#101221]/70 backdrop-blur-xl border-2 border-black;
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.05), 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .paper-texture {
+    background-image: linear-gradient(#484554 1px, transparent 1px);
+    background-size: 100% 2.5rem;
+  }
+}
