@@ -385,7 +385,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:3001');
+    const SOCKET_URL = (import.meta as any).env?.VITE_SOCKET_URL || 'http://localhost:3001';
+    socketRef.current = io(SOCKET_URL);
     socketRef.current.on('connect', () => {
       socketRef.current?.emit(SystemEvent.NEURAL_SYNC, { status: 'ONLINE', timestamp: new Date() });
     });

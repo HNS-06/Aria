@@ -50,6 +50,10 @@ io.on('connection', (socket) => {
 });
 
 // ── API Routes ──
+app.get('/', (req, res) => {
+  res.send('ARIA Neural Uplink Server - Systems Operational');
+});
+
 app.get('/api/status', (req, res) => {
   res.json({ status: 'ARIA Systems Online', version: '1.0.0' });
 });
