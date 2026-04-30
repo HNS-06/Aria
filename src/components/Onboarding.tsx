@@ -156,7 +156,7 @@ export default function Onboarding() {
           <div className="absolute -top-4 -left-4 bg-cyan-400 text-black border-2 border-black px-3 py-1 font-black italic shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transform rotate-2 z-10 text-xs">PANEL 02</div>
           
           <p className="font-lexend font-black uppercase text-cyan-400 text-[10px] tracking-widest mt-4 mb-4">Operational Sectors</p>
-          <div className="flex flex-wrap gap-2 mb-10 overflow-y-auto max-h-[300px] scrollbar-hide pr-2">
+          <div className="flex flex-wrap gap-2 mb-10 overflow-y-auto max-h-[300px] futuristic-scroll pr-4">
             {focusAreas.map(area => (
               <button 
                 key={area}
