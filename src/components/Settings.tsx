@@ -18,7 +18,7 @@ import {
 import { useGlobal, StudyMode } from '../context/GlobalContext';
 
 export default function Settings() {
-  const { settings, updateSettings, resetSettings, user, setUser } = useGlobal();
+  const { settings, updateSettings, fullFactoryReset, user, setUser } = useGlobal();
 
   const handleThemeChange = (theme: 'dark' | 'light' | 'amoled') => {
     updateSettings({ theme });
@@ -191,7 +191,7 @@ export default function Settings() {
              <button 
               onClick={() => {
                 const confirmed = window.confirm("Are you sure? This will restore all system parameters to factory defaults.");
-                if (confirmed) resetSettings();
+                if (confirmed) fullFactoryReset();
               }}
               className="w-full flex items-center justify-between p-4 bg-red-600/10 border-2 border-red-600/30 hover:border-red-600 rounded-xl transition-all group"
             >

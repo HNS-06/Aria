@@ -63,6 +63,14 @@ export interface MissionAnalysis {
   overallStatus: string;
 }
 
+export interface ModuleContent {
+  notes: string;
+  importantTopics: string[];
+  definitions: { term: string; definition: string }[];
+  equations: { formula: string; explanation: string }[];
+  keyPoints: string[];
+}
+
 const validateResponse = <T>(data: any, fallback: T): T => {
   if (!data || typeof data !== 'object') return fallback;
   return { ...fallback, ...data };
@@ -252,4 +260,46 @@ export async function generateStudyPlan(missions: Mission[], overallXP: number, 
   } catch (e) {
     return MOCK_RESPONSES.STUDY_PLAN;
   }
+}
+
+export async function generateModuleContent(moduleName: string, syllabus: string): Promise<ModuleContent> {
+  if (!ai) return MOCK_RESPONSES.MODULE_CONTENT;
+
+  return retry(async () => {
+    const prompt = `Synthesize educational intel for Module: "${moduleName}".
+    Syllabus Context: "${syllabus}"
+    Provide comprehensive notes, topics, definitions, equations, and key points.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            notes: { type: Type.STRING },
+            importantTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
+            definitions: { 
+              type: Type.ARRAY, 
+              items: { 
+                type: Type.OBJECT, 
+                properties: { term: { type: Type.STRING }, definition: { type: Type.STRING } } 
+              } 
+            },
+            equations: { 
+              type: Type.ARRAY, 
+              items: { 
+                type: Type.OBJECT, 
+                properties: { formula: { type: Type.STRING }, explanation: { type: Type.STRING } } 
+              } 
+            },
+            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+          },
+          required: ['notes', 'importantTopics', 'definitions', 'equations', 'keyPoints'],
+        },
+      }
+    });
+    return validateResponse(JSON.parse(response.text), MOCK_RESPONSES.MODULE_CONTENT);
+  });
 }

@@ -193,11 +193,11 @@ export default function App() {
           <div className="flex items-center gap-6">
             <button className="relative text-slate-300 hover:text-cyan-300 transition-all hover:scale-110 active:scale-95">
               <Bell size={24} />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-black rounded-full text-[8px] flex items-center justify-center font-black text-white">2</span>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-black rounded-full text-[8px] flex items-center justify-center font-black text-white">0</span>
             </button>
             <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border-2 border-black">
-              <Zap size={20} className="text-orange-500 fill-orange-500" />
-              <span className="font-bangers text-lg text-orange-500 tracking-wider">{user.level}</span>
+              <Flame size={20} className="text-orange-500 fill-orange-500" />
+              <span className="font-bangers text-lg text-orange-500 tracking-wider">{user.streak}</span>
             </div>
             <div className="h-10 w-10 rounded-full border-2 border-violet-500 overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer hover:scale-105 transition-transform">
               <img 

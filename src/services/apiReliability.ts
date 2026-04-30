@@ -69,5 +69,17 @@ export const MOCK_RESPONSES = {
     bottlenecks: [{ missionId: 1, issue: "Progress drift detected", suggestion: "Increase focus intensity" }],
     victories: [{ missionId: 2, strength: "High velocity maintained" }],
     overallStatus: "Operational resilience at 85%. Tactical fallbacks active."
+  },
+  MODULE_CONTENT: {
+    notes: "Cached tactical data provided in absence of AI uplink. Please restore connection for real-time synthesis.",
+    importantTopics: ["Strategic Fundamentals", "Operational Logic", "System Integration"],
+    definitions: [
+      { term: "Core Protocol", definition: "The primary operational sequence for knowledge acquisition." },
+      { term: "Neural Link", definition: "The bridge between raw data and cognitive mastery." }
+    ],
+    equations: [
+      { formula: "K = (F * T)^2", explanation: "Knowledge gained equals Focus times Time squared." }
+    ],
+    keyPoints: ["Maintain mission focus", "Execute tactical reviews", "Sync neural map regularly"]
   }
 };

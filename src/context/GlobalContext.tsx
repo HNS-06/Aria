@@ -95,6 +95,7 @@ interface GlobalContextType {
   settings: AppSettings;
   updateSettings: (updates: Partial<AppSettings>) => void;
   resetSettings: () => void;
+  fullFactoryReset: () => void;
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
 }
@@ -186,10 +187,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     document.documentElement.classList.remove('dark', 'light', 'amoled');
     document.documentElement.classList.add(settings.theme);
-    if (settings.theme === 'amoled') {
-       document.documentElement.style.setProperty('--bg-primary', '#000000');
+    
+    const root = document.documentElement;
+    if (settings.theme === 'light') {
+      root.style.setProperty('--bg-primary', '#f8fafc');
+      root.style.setProperty('--text-primary', '#0f172a');
+    } else if (settings.theme === 'amoled') {
+      root.style.setProperty('--bg-primary', '#000000');
+      root.style.setProperty('--text-primary', '#ffffff');
     } else {
-       document.documentElement.style.removeProperty('--bg-primary');
+      root.style.setProperty('--bg-primary', '#101221');
+      root.style.setProperty('--text-primary', '#e1e1f7');
     }
   }, [settings.theme]);
 
@@ -496,6 +504,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const fullFactoryReset = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
   return (
     <GlobalContext.Provider value={{
       user, setUser, missions, setMissions, tasks, setTasks, knowledgeMap, setKnowledgeMap, notes, setNotes,
@@ -503,7 +516,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updateXp, hasOnboarded: !!user, completeOnboarding,
       addTask, updateTask, deleteTask, addKnowledgeNode, deleteKnowledgeNode,
       addNote, deleteNote, analytics,
-      settings, updateSettings, resetSettings,
+      settings, updateSettings, resetSettings, fullFactoryReset,
       activeTab, setActiveTab
     }}>
       {children}

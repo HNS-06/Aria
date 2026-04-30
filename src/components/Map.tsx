@@ -9,9 +9,16 @@ import {
   Info,
   Plus,
   Trash2,
-  ChevronRight
+  ChevronRight,
+  Brain,
+  Terminal,
+  Cpu,
+  BookOpen,
+  X,
+  Loader2
 } from 'lucide-react';
 import { useGlobal, KnowledgeNode } from '../context/GlobalContext';
+import { generateModuleContent, type ModuleContent } from '../services/geminiService';
 
 export default function Map() {
   const { knowledgeMap, addKnowledgeNode, deleteKnowledgeNode } = useGlobal();
@@ -20,6 +27,10 @@ export default function Map() {
     label: '',
     type: 'subject'
   });
+  const [activeModule, setActiveModule] = useState<KnowledgeNode | null>(null);
+  const [syllabusInput, setSyllabusInput] = useState('');
+  const [moduleContent, setModuleContent] = useState<ModuleContent | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const subjects = knowledgeMap.filter(n => n.type === 'subject');
 
@@ -28,6 +39,19 @@ export default function Map() {
       addKnowledgeNode(newNode);
       setNewNode({ label: '', type: 'subject' });
       setShowAddModal(false);
+    }
+  };
+
+  const handleProcessSyllabus = async () => {
+    if (!activeModule || !syllabusInput.trim()) return;
+    setIsGenerating(true);
+    try {
+      const content = await generateModuleContent(activeModule.label, syllabusInput);
+      setModuleContent(content);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -94,7 +118,12 @@ export default function Map() {
                         whileHover={{ scale: 1.1, rotate: 5 }}
                         className="h-24 w-24 rounded-full border-4 border-black flex items-center justify-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative transition-all bg-violet-600"
                       >
-                        <PlayCircle size={40} className="text-black" />
+                        <button 
+                          onClick={() => setActiveModule(topic)}
+                          className="absolute inset-0 flex items-center justify-center rounded-full group-hover:scale-110 transition-transform"
+                        >
+                          <PlayCircle size={40} className="text-black" />
+                        </button>
                         
                         <div className="absolute -top-3 -right-3 w-8 h-8 bg-black rounded-md flex items-center justify-center border border-white/10 text-[10px] font-black uppercase text-cyan-400">
                           {idx + 1}
@@ -184,6 +213,149 @@ export default function Map() {
               <div className="flex gap-4">
                 <button onClick={handleAddNode} className="flex-1 bg-cyan-400 text-black py-3 rounded-xl border-4 border-black font-black uppercase tracking-widest hover:bg-white transition-colors">Deploy</button>
                 <button onClick={() => setShowAddModal(false)} className="flex-1 bg-slate-800 text-white py-3 rounded-xl border-4 border-black font-black uppercase tracking-widest hover:bg-slate-700 transition-colors">Abort</button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Module Briefing Viewer */}
+      <AnimatePresence>
+        {activeModule && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center p-8 bg-black/95 backdrop-blur-xl"
+          >
+            <div className="bg-[#0b0d1c] border-4 border-black rounded-3xl w-full max-w-5xl h-full max-h-[85vh] shadow-[20px_20px_0px_0px_rgba(123,92,240,1)] overflow-hidden flex flex-col relative">
+              <button 
+                onClick={() => {
+                  setActiveModule(null);
+                  setModuleContent(null);
+                  setSyllabusInput('');
+                }}
+                className="absolute top-6 right-6 p-2 bg-red-500 text-white rounded-xl border-2 border-black hover:bg-white hover:text-black transition-all z-20"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="p-8 border-b-4 border-black bg-violet-600/10 flex items-center gap-6">
+                <div className="w-16 h-16 bg-violet-600 rounded-2xl border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <Brain size={32} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="font-lexend font-black text-3xl uppercase tracking-tighter italic text-white">MODULE BRIEFING: {activeModule.label}</h2>
+                  <p className="text-cyan-400 font-bold uppercase tracking-widest text-[10px]">Strategic Synthesis Engine Active</p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 futuristic-scroll">
+                {!moduleContent ? (
+                  <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto text-center space-y-8">
+                    <div className="w-20 h-20 bg-slate-900 border-2 border-black rounded-full flex items-center justify-center animate-bounce">
+                      <Terminal size={32} className="text-cyan-400" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="font-lexend font-black text-xl uppercase tracking-widest">Awaiting Tactical Parameters</h3>
+                      <p className="text-slate-400 text-sm font-bold">Paste your module syllabus below. ARIA will extract core intel and build your cognitive blueprint.</p>
+                    </div>
+                    <textarea 
+                      value={syllabusInput}
+                      onChange={(e) => setSyllabusInput(e.target.value)}
+                      placeholder="PASTE SYLLABUS DATA HERE..."
+                      className="w-full h-48 bg-black border-2 border-black rounded-2xl p-6 font-bold text-white outline-none focus:border-cyan-400 transition-all placeholder:text-slate-800 shadow-[inset_4px_4px_0px_rgba(0,0,0,0.5)]"
+                    />
+                    <button 
+                      onClick={handleProcessSyllabus}
+                      disabled={isGenerating || !syllabusInput.trim()}
+                      className="w-full bg-cyan-400 text-black py-4 rounded-2xl border-4 border-black font-lexend font-black text-xl uppercase tracking-widest shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="animate-spin" />
+                          Synthesizing...
+                        </>
+                      ) : (
+                        <>
+                          <Cpu />
+                          Analyze & Deploy Intel
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-8">
+                      <section className="bg-black/40 border-2 border-black p-6 rounded-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                          <BookOpen size={64} />
+                        </div>
+                        <h4 className="font-lexend font-black text-[10px] text-cyan-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <Terminal size={14} /> Tactical Notes
+                        </h4>
+                        <div className="prose prose-invert max-w-none text-slate-300 text-sm font-bold leading-relaxed">
+                          {moduleContent.notes}
+                        </div>
+                      </section>
+
+                      <section className="space-y-4">
+                        <h4 className="font-lexend font-black text-[10px] text-orange-400 uppercase tracking-widest flex items-center gap-2">
+                          <Star size={14} /> Critical Takeaways
+                        </h4>
+                        <div className="grid grid-cols-1 gap-3">
+                          {moduleContent.keyPoints.map((point, i) => (
+                            <div key={i} className="flex gap-4 p-4 bg-slate-900 border-2 border-black rounded-xl">
+                              <span className="font-bangers text-xl text-cyan-400">0{i+1}</span>
+                              <p className="text-[11px] font-black uppercase text-slate-200">{point}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    </div>
+
+                    <div className="space-y-8">
+                      <section className="bg-violet-600/10 border-2 border-black p-6 rounded-2xl">
+                         <h4 className="font-lexend font-black text-[10px] text-violet-400 uppercase tracking-widest mb-4">Neural Definitions</h4>
+                         <div className="space-y-4">
+                            {moduleContent.definitions.map((def, i) => (
+                              <div key={i} className="space-y-1">
+                                <span className="text-xs font-black uppercase text-white bg-violet-600 px-2 py-0.5 rounded border border-black">{def.term}</span>
+                                <p className="text-[10px] font-bold text-slate-500 italic pl-2 border-l-2 border-violet-600/30">{def.definition}</p>
+                              </div>
+                            ))}
+                         </div>
+                      </section>
+
+                      {moduleContent.equations.length > 0 && (
+                        <section className="bg-cyan-400/5 border-2 border-black p-6 rounded-2xl">
+                           <h4 className="font-lexend font-black text-[10px] text-cyan-400 uppercase tracking-widest mb-4">Strategic Formulae</h4>
+                           <div className="space-y-4">
+                              {moduleContent.equations.map((eq, i) => (
+                                <div key={i} className="flex items-center gap-4 bg-black/40 p-4 rounded-xl border border-white/5">
+                                   <div className="bg-black px-4 py-2 rounded-lg border border-cyan-400 text-cyan-400 font-mono text-sm font-black italic">
+                                     {eq.formula}
+                                   </div>
+                                   <p className="text-[9px] font-black uppercase text-slate-500 leading-tight">{eq.explanation}</p>
+                                </div>
+                              ))}
+                           </div>
+                        </section>
+                      )}
+
+                      <section className="bg-orange-500/10 border-2 border-black p-6 rounded-2xl">
+                        <h4 className="font-lexend font-black text-[10px] text-orange-400 uppercase tracking-widest mb-4">Operational Roadmap</h4>
+                        <div className="flex flex-wrap gap-2">
+                           {moduleContent.importantTopics.map((topic, i) => (
+                             <span key={i} className="px-3 py-1 bg-black border border-orange-500/30 text-orange-500 text-[9px] font-black uppercase tracking-tighter rounded">
+                               {topic}
+                             </span>
+                           ))}
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
