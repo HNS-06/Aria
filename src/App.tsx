@@ -39,11 +39,12 @@ const Focus = lazy(() => import('./components/Focus'));
 const Settings = lazy(() => import('./components/Settings'));
 
 export default function App() {
-  const { hasOnboarded, user, setUser, addTask, addKnowledgeNode, addNote, activeTab, setActiveTab } = useGlobal();
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const { 
+    hasOnboarded, user, setUser, addTask, addKnowledgeNode, addNote, activeTab, setActiveTab,
+    showQuickAdd, setShowQuickAdd, quickAddType, setQuickAddType
+  } = useGlobal();
   
-  // Quick Add State
-  const [quickAddType, setQuickAddType] = useState<'TASK' | 'NODE' | 'NOTE'>('TASK');
+  // Quick Add Local UI State
   const [title, setTitle] = useState('');
   const [excerpt, setExcerpt] = useState('');
 

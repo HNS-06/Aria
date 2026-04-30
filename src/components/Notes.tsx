@@ -14,7 +14,7 @@ import {
 import { useGlobal } from '../context/GlobalContext';
 
 export default function Notes() {
-  const { notes, deleteNote, addNote } = useGlobal();
+  const { notes, deleteNote, addNote, setShowQuickAdd, setQuickAddType } = useGlobal();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredNotes = notes.filter(n => 
@@ -109,10 +109,10 @@ export default function Notes() {
       {/* Manual Creation Section */}
       <section 
         onClick={() => {
-           // This will be handled by the global FAB, but we can also trigger it from here
-           // For now, let's just make this section look like a button that explains the FAB
+           setQuickAddType('NOTE');
+           setShowQuickAdd(true);
         }}
-        className="glass-panel p-12 border-dashed flex flex-col items-center justify-center text-center bg-slate-950/20 opacity-40 hover:opacity-100 transition-opacity group"
+        className="glass-panel p-12 border-dashed flex flex-col items-center justify-center text-center bg-slate-950/20 opacity-40 hover:opacity-100 transition-opacity group cursor-pointer"
       >
          <div className="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center mb-4 bg-slate-900 group-hover:bg-cyan-400 group-hover:text-black transition-all">
             <Plus size={32} />

@@ -102,6 +102,10 @@ interface GlobalContextType {
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
   extendBreak: (extend: boolean) => void;
+  showQuickAdd: boolean;
+  setShowQuickAdd: (show: boolean) => void;
+  quickAddType: 'TASK' | 'NODE' | 'NOTE';
+  setQuickAddType: (type: 'TASK' | 'NODE' | 'NOTE') => void;
 }
 
 const GlobalContext = createContext<GlobalContextType>(null!);
@@ -157,6 +161,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [logs, setLogs] = useState<SessionLog[]>(() => safeParse(STORAGE_KEYS.LOGS, []));
   const [settings, setSettings] = useState<AppSettings>(() => safeParse(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS));
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HQ);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddType, setQuickAddType] = useState<'TASK' | 'NODE' | 'NOTE'>('TASK');
 
   const getDurationForMode = useCallback((mode: StudyMode) => {
     return (settings.durations[mode] || 25) * 60;
@@ -625,7 +631,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addTask, updateTask, deleteTask, addKnowledgeNode, deleteKnowledgeNode,
       addNote, deleteNote, analytics,
       settings, updateSettings, resetSettings, fullFactoryReset,
-      activeTab, setActiveTab, extendBreak
+      activeTab, setActiveTab, extendBreak,
+      showQuickAdd, setShowQuickAdd, quickAddType, setQuickAddType
     }}>
       {children}
     </GlobalContext.Provider>
