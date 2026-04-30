@@ -1,12 +1,12 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import Groq from "groq-sdk";
 import { retry, MOCK_RESPONSES } from "./apiReliability";
 
-let ai: any = null; // Use any to bypass strict type check if SDK is unconventional
+let ai: GoogleGenerativeAI | null = null;
 try {
   const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '');
   if (apiKey) {
-    ai = new GoogleGenAI({ apiKey });
+    ai = new GoogleGenerativeAI(apiKey);
   }
 } catch (e) {
   console.warn("AI initialization failed", e);
@@ -81,11 +81,10 @@ export async function generateAudioBriefing(text: string): Promise<string> {
   
   return retry(async () => {
     const prompt = `Say in an authoritative, futuristic commander voice: "Attention Hero Scholar. Here is your tactical briefing." Then read this summary: ${text}`;
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash-8b",
-      contents: [{ parts: [{ text: prompt }] }],
-    });
-    return response.text || `Briefing: ${text}`;
+    const model = ai!.getGenerativeModel({ model: "gemini-1.0-pro" });
+    const response = await model.generateContent(prompt);
+    const result = await response.response;
+    return result.text() || `Briefing: ${text}`;
   });
 }
 
@@ -98,31 +97,14 @@ export async function generateFlashcards(topic: string, concepts: string[]): Pro
       Topic: ${topic}
       Concepts: ${concepts.join(', ')}`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash-8b",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              flashcards: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    question: { type: Type.STRING },
-                    answer: { type: Type.STRING },
-                  },
-                  required: ['question', 'answer'],
-                },
-              },
-            },
-            required: ['flashcards'],
-          },
-        }
+      const model = ai!.getGenerativeModel({ 
+        model: "gemini-1.0-pro",
+        generationConfig: { responseMimeType: "application/json" }
       });
-      return JSON.parse(response.text).flashcards || [];
+      const response = await model.generateContent(prompt);
+      const result = await response.response;
+      const data = JSON.parse(result.text());
+      return data.flashcards || [];
     });
   } catch (e) {
     console.error("Flashcard generation failed, using fallback", e);
@@ -140,7 +122,7 @@ export async function askTacticalTutor(question: string, context: string): Promi
         { role: "system", content: "You are the ARIA Tactical Analyst. Provide precise guidance." },
         { role: "user", content: prompt }
       ],
-      model: "llama3-70b-8192",
+      model: "llama-3.1-8b-instant",
     });
     return chatCompletion.choices[0]?.message?.content || "Signal interference detected.";
   });
@@ -151,24 +133,14 @@ export async function summarizeIntel(content: string): Promise<IntelSummary> {
 
   try {
     return await retry(async () => {
-      const prompt = `Extract intelligence from: ${content}`;
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash-8b",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              executiveSummary: { type: Type.STRING },
-              criticalTakeaways: { type: Type.ARRAY, items: { type: Type.STRING } },
-              actionItems: { type: Type.ARRAY, items: { type: Type.STRING } },
-            },
-            required: ['executiveSummary', 'criticalTakeaways', 'actionItems'],
-          },
-        }
+      const prompt = `Extract intelligence from: ${content}. Return as JSON with keys: executiveSummary (string), criticalTakeaways (string array), actionItems (string array).`;
+      const model = ai!.getGenerativeModel({ 
+        model: "gemini-1.0-pro",
+        generationConfig: { responseMimeType: "application/json" }
       });
-      return validateResponse(JSON.parse(response.text), MOCK_RESPONSES.INTEL_SUMMARY);
+      const response = await model.generateContent(prompt);
+      const result = await response.response;
+      return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.INTEL_SUMMARY);
     });
   } catch (e) {
     return MOCK_RESPONSES.INTEL_SUMMARY;
@@ -180,43 +152,14 @@ export async function analyzeMissionProgress(missions: Mission[]): Promise<Missi
 
   try {
     return await retry(async () => {
-      const prompt = `Diagnostic Scan: ${JSON.stringify(missions)}`;
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash-8b",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              bottlenecks: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    missionId: { type: Type.NUMBER },
-                    issue: { type: Type.STRING },
-                    suggestion: { type: Type.STRING },
-                  },
-                }
-              },
-              victories: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    missionId: { type: Type.NUMBER },
-                    strength: { type: Type.STRING },
-                  },
-                }
-              },
-              overallStatus: { type: Type.STRING },
-            },
-            required: ['overallStatus'],
-          },
-        }
+      const prompt = `Diagnostic Scan: ${JSON.stringify(missions)}. Return JSON: { bottlenecks: [{ missionId, issue, suggestion }], victories: [{ missionId, strength }], overallStatus: string }`;
+      const model = ai!.getGenerativeModel({ 
+        model: "gemini-1.0-pro",
+        generationConfig: { responseMimeType: "application/json" }
       });
-      return validateResponse(JSON.parse(response.text), MOCK_RESPONSES.MISSION_ANALYSIS);
+      const response = await model.generateContent(prompt);
+      const result = await response.response;
+      return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.MISSION_ANALYSIS);
     });
   } catch (e) {
     return MOCK_RESPONSES.MISSION_ANALYSIS;
@@ -228,34 +171,14 @@ export async function generateStudyPlan(missions: Mission[], overallXP: number, 
 
   try {
     return await retry(async () => {
-      const prompt = `Generate study plan: Level ${level}, XP ${overallXP}, Missions ${JSON.stringify(missions)}, Time ${focusTime}m`;
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash-8b",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              prioritizedMissions: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    missionId: { type: Type.NUMBER },
-                    reason: { type: Type.STRING },
-                    priority: { type: Type.STRING, enum: ['High', 'Medium', 'Low'] },
-                    suggestedFocusMinutes: { type: Type.NUMBER },
-                  },
-                },
-              },
-              strategicAdvice: { type: Type.STRING },
-            },
-            required: ['prioritizedMissions', 'strategicAdvice'],
-          },
-        }
+      const prompt = `Generate study plan: Level ${level}, XP ${overallXP}, Missions ${JSON.stringify(missions)}, Time ${focusTime}m. Return JSON: { prioritizedMissions: [{ missionId, reason, priority, suggestedFocusMinutes }], strategicAdvice: string }`;
+      const model = ai!.getGenerativeModel({ 
+        model: "gemini-1.0-pro",
+        generationConfig: { responseMimeType: "application/json" }
       });
-      return validateResponse(JSON.parse(response.text), MOCK_RESPONSES.STUDY_PLAN);
+      const response = await model.generateContent(prompt);
+      const result = await response.response;
+      return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.STUDY_PLAN);
     });
   } catch (e) {
     return MOCK_RESPONSES.STUDY_PLAN;
@@ -268,38 +191,14 @@ export async function generateModuleContent(moduleName: string, syllabus: string
   return retry(async () => {
     const prompt = `Synthesize educational intel for Module: "${moduleName}".
     Syllabus Context: "${syllabus}"
-    Provide comprehensive notes, topics, definitions, equations, and key points.`;
+    Return JSON: { notes: string, importantTopics: [string], definitions: [{term, definition}], equations: [{formula, explanation}], keyPoints: [string] }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash-8b",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            notes: { type: Type.STRING },
-            importantTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
-            definitions: { 
-              type: Type.ARRAY, 
-              items: { 
-                type: Type.OBJECT, 
-                properties: { term: { type: Type.STRING }, definition: { type: Type.STRING } } 
-              } 
-            },
-            equations: { 
-              type: Type.ARRAY, 
-              items: { 
-                type: Type.OBJECT, 
-                properties: { formula: { type: Type.STRING }, explanation: { type: Type.STRING } } 
-              } 
-            },
-            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
-          },
-          required: ['notes', 'importantTopics', 'definitions', 'equations', 'keyPoints'],
-        },
-      }
+    const model = ai!.getGenerativeModel({ 
+      model: "gemini-1.0-pro",
+      generationConfig: { responseMimeType: "application/json" }
     });
-    return validateResponse(JSON.parse(response.text), MOCK_RESPONSES.MODULE_CONTENT);
+    const response = await model.generateContent(prompt);
+    const result = await response.response;
+    return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.MODULE_CONTENT);
   });
 }

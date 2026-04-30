@@ -61,7 +61,10 @@ export default function Settings() {
                 alt="Avatar" 
                 className="w-20 h-20 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)]"
               />
-              <button className="absolute -bottom-2 -right-2 bg-cyan-400 text-black p-1.5 rounded-lg border-2 border-black hover:scale-110 transition-transform">
+              <button 
+                onClick={() => alert("Neural Appearance Module currently locked. Re-establish higher clearance.")}
+                className="absolute -bottom-2 -right-2 bg-cyan-400 text-black p-1.5 rounded-lg border-2 border-black hover:scale-110 transition-transform"
+              >
                 <Palette size={14} />
               </button>
             </div>

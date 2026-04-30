@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Zap, Target, Flame as FlameIcon, Trophy, ChevronRight, BrainCircuit, Loader2, Sparkles, Clock, AlertTriangle, ShieldCheck, Activity, Play, Pause, RotateCcw, Coffee } from 'lucide-react';
 import { generateStudyPlan, analyzeMissionProgress, type StudyPlan, type MissionAnalysis } from '../services/geminiService';
-import { useGlobal } from '../context/GlobalContext';
+import { useGlobal, Tab } from '../context/GlobalContext';
 
 export default function HQ() {
-  const { user, missions, timer, startTimer, pauseTimer, resetTimer, extendBreak } = useGlobal();
+  const { user, missions, timer, startTimer, pauseTimer, resetTimer, extendBreak, setActiveTab } = useGlobal();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [plan, setPlan] = useState<StudyPlan | null>(null);
@@ -216,7 +216,10 @@ export default function HQ() {
                 </div>
               ))}
             </div>
-            <button className="mt-8 font-lexend font-black uppercase text-xs tracking-widest text-slate-400 hover:text-white flex items-center gap-1 transition-colors">
+            <button 
+              onClick={() => setActiveTab(Tab.SCHEDULE)}
+              className="mt-8 font-lexend font-black uppercase text-xs tracking-widest text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
+            >
               View All Missions <ChevronRight size={14} />
             </button>
           </section>

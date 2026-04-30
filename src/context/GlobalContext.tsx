@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { SystemEvent, AppSettings, Tab } from '../types';
+export { Tab };
 import { calculateAnalytics, type SessionLog, type AnalyticsStats } from '../services/analyticsEngine';
 import { useNotification } from './NotificationContext';
 import { Clock, Zap, Target, Flame, BrainCircuit, Coffee, CheckCircle2 } from 'lucide-react';
