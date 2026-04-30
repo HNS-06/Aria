@@ -235,6 +235,36 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const socketRef = useRef<Socket | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const warnedRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const playAlarm = useCallback(() => {
+    if (!settings.soundEnabled) return;
+    
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      
+      const ctx = audioContextRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+      
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {
+      console.warn("Audio playback failed", e);
+    }
+  }, [settings.soundEnabled]);
 
   const updateXp = useCallback((amount: number) => {
     setUser(prev => {
@@ -280,6 +310,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (prev.isBreak) {
         // Break ended, show prompt for 5 more minutes
+        playAlarm();
         return { ...prev, isActive: false, timeLeft: 0, endTime: null, showBreakPrompt: true };
       }
 
@@ -350,6 +381,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               nextAccumulated += 1;
               // Every 20 minutes (1200s) trigger a break
               if (nextAccumulated >= 1200) {
+                playAlarm();
                 if (settings.notificationsEnabled) {
                   addNotification({
                     title: "Tactical Break Required",
