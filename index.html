@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ARIA | Intelligence Headquarters</title>
+    <script>
+      window.addEventListener('error', (e) => {
+        if (e.message.includes('Failed to fetch dynamically imported module') || e.message.includes('Importing a stopped module')) {
+          window.location.reload();
+        }
+      }, true);
+    </script>
   </head>
   <body>
     <div id="root"></div>
