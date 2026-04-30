@@ -21,7 +21,7 @@ import { generateStudyPlan } from '../services/geminiService';
 import { useNotification } from '../context/NotificationContext';
 
 export default function Schedule() {
-  const { tasks, user, missions, addTask, updateTask, deleteTask } = useGlobal();
+  const { tasks, user, missions, addTask, updateTask, deleteTask, settings } = useGlobal();
   const { addNotification } = useNotification();
   const [selectedDate] = useState(new Date());
   const [isAiMode, setIsAiMode] = useState(false);
@@ -99,6 +99,16 @@ export default function Schedule() {
   };
 
   const handleAiSchedule = async () => {
+    if (!settings.aiSchedulingEnabled) {
+      addNotification({
+        title: "Uplink Restricted",
+        message: "AI Scheduling is currently disabled in system parameters.",
+        icon: Brain,
+        type: 'AI',
+        priority: 'MEDIUM'
+      });
+      return;
+    }
     if (!user || missions.length === 0) return;
     setIsGenerating(true);
     try {

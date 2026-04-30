@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { SystemEvent } from '../types';
+import { SystemEvent, AppSettings, Tab } from '../types';
 import { calculateAnalytics, type SessionLog, type AnalyticsStats } from '../services/analyticsEngine';
 import { useNotification } from './NotificationContext';
 import { Clock, Zap, Target, Flame, BrainCircuit, Coffee, CheckCircle2 } from 'lucide-react';
@@ -92,6 +92,11 @@ interface GlobalContextType {
   addNote: (note: Omit<Note, 'id' | 'date' | 'color'>) => void;
   deleteNote: (id: string) => void;
   analytics: AnalyticsStats;
+  settings: AppSettings;
+  updateSettings: (updates: Partial<AppSettings>) => void;
+  resetSettings: () => void;
+  activeTab: Tab;
+  setActiveTab: (tab: Tab) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType>(null!);
@@ -105,7 +110,22 @@ const STORAGE_KEYS = {
   KNOWLEDGE_MAP: 'aria_knowledge_map',
   NOTES: 'aria_notes',
   TIMER: 'aria_timer_state',
-  LOGS: 'aria_session_logs'
+  LOGS: 'aria_session_logs',
+  SETTINGS: 'aria_app_settings'
+};
+
+const DEFAULT_SETTINGS: AppSettings = {
+  theme: 'dark',
+  durations: {
+    [StudyMode.DEEP_FOCUS]: 50,
+    [StudyMode.LIGHT_REVIEW]: 25,
+    [StudyMode.CREATIVE_WORK]: 60
+  },
+  notificationsEnabled: true,
+  soundEnabled: true,
+  aiSchedulingEnabled: true,
+  autoStartBreaks: false,
+  autoStartFocus: false
 };
 
 const safeParse = <T,>(key: string, defaultValue: T): T => {
@@ -115,15 +135,6 @@ const safeParse = <T,>(key: string, defaultValue: T): T => {
   } catch (e) {
     console.error(`[SafeParse] Error parsing ${key}:`, e);
     return defaultValue;
-  }
-};
-
-const getDurationForMode = (mode: StudyMode) => {
-  switch (mode) {
-    case StudyMode.DEEP_FOCUS: return 50 * 60;
-    case StudyMode.LIGHT_REVIEW: return 25 * 60;
-    case StudyMode.CREATIVE_WORK: return 60 * 60;
-    default: return 25 * 60;
   }
 };
 
@@ -139,6 +150,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [knowledgeMap, setKnowledgeMap] = useState<KnowledgeNode[]>(() => safeParse(STORAGE_KEYS.KNOWLEDGE_MAP, []));
   const [notes, setNotes] = useState<Note[]>(() => safeParse(STORAGE_KEYS.NOTES, []));
   const [logs, setLogs] = useState<SessionLog[]>(() => safeParse(STORAGE_KEYS.LOGS, []));
+  const [settings, setSettings] = useState<AppSettings>(() => safeParse(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS));
+  const [activeTab, setActiveTab] = useState<Tab>(Tab.HQ);
+
+  const getDurationForMode = useCallback((mode: StudyMode) => {
+    return (settings.durations[mode] || 25) * 60;
+  }, [settings.durations]);
 
   const [timer, setTimer] = useState<TimerState>(() => {
     const saved = safeParse<TimerState | null>(STORAGE_KEYS.TIMER, null);
@@ -148,10 +165,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     return saved || {
       isActive: false,
-      timeLeft: 25 * 60,
+      timeLeft: (settings.durations[StudyMode.DEEP_FOCUS] || 50) * 60,
       mode: StudyMode.DEEP_FOCUS,
       endTime: null,
-      duration: 25 * 60
+      duration: (settings.durations[StudyMode.DEEP_FOCUS] || 50) * 60
     };
   });
 
@@ -165,11 +182,22 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return stats;
   }, [logs, tasks, missions]);
 
+  // Apply theme class to body
+  useEffect(() => {
+    document.documentElement.classList.remove('dark', 'light', 'amoled');
+    document.documentElement.classList.add(settings.theme);
+    if (settings.theme === 'amoled') {
+       document.documentElement.style.setProperty('--bg-primary', '#000000');
+    } else {
+       document.documentElement.style.removeProperty('--bg-primary');
+    }
+  }, [settings.theme]);
+
   useEffect(() => {
     if (user && (user.streak !== analytics.streak || user.focusScore !== analytics.focusScore || user.sessionsDone !== analytics.sessionsDone || user.totalFocusTime !== analytics.totalFocusTime)) {
       
       // Notify on streak increase
-      if (analytics.streak > user.streak) {
+      if (analytics.streak > user.streak && settings.notificationsEnabled) {
         addNotification({
           title: "Streak Extended!",
           message: `You've maintained consistency for ${analytics.streak} days. Keep the momentum!`,
@@ -187,7 +215,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         totalFocusTime: analytics.totalFocusTime
       }) : null);
     }
-  }, [analytics, user, addNotification]);
+  }, [analytics, user, addNotification, settings.notificationsEnabled]);
 
   const socketRef = useRef<Socket | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -199,7 +227,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const newXp = prev.xp + amount;
       const newLevel = Math.floor(newXp / 1000) + 1;
       
-      if (newLevel > prev.level) {
+      if (newLevel > prev.level && settings.notificationsEnabled) {
         addNotification({
           title: "Level Up!",
           message: `You've reached level ${newLevel}. Tactical capabilities expanded.`,
@@ -211,7 +239,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       return { ...prev, xp: newXp, level: newLevel };
     });
-  }, [addNotification]);
+  }, [addNotification, settings.notificationsEnabled]);
 
   const logSession = useCallback((session: Omit<SessionLog, 'id'>) => {
     const newLog = { ...session, id: crypto.randomUUID() };
@@ -231,19 +259,21 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         completed: true
       });
 
-      addNotification({
-        title: "Session Completed!",
-        message: `Great work! ${minutes} minutes of ${prev.mode} finalized.`,
-        icon: CheckCircle2,
-        type: 'TIMER',
-        priority: 'HIGH'
-      });
+      if (settings.notificationsEnabled) {
+        addNotification({
+          title: "Session Completed!",
+          message: `Great work! ${minutes} minutes of ${prev.mode} finalized.`,
+          icon: CheckCircle2,
+          type: 'TIMER',
+          priority: 'HIGH'
+        });
+      }
 
       updateXp(minutes * 10);
       warnedRef.current = false;
       return { ...prev, isActive: false, timeLeft: 0, endTime: null };
     });
-  }, [logSession, updateXp, addNotification]);
+  }, [logSession, updateXp, addNotification, settings.notificationsEnabled]);
 
   useEffect(() => {
     if (timer.isActive && timer.endTime) {
@@ -251,7 +281,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const remaining = Math.max(0, Math.ceil((timer.endTime! - Date.now()) / 1000));
         
         // 1 minute warning
-        if (remaining <= 60 && remaining > 55 && !warnedRef.current) {
+        if (remaining <= 60 && remaining > 55 && !warnedRef.current && settings.notificationsEnabled) {
           warnedRef.current = true;
           addNotification({
             title: "1 Minute Remaining",
@@ -273,7 +303,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     }
     return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
-  }, [timer.isActive, timer.endTime, handleTimerComplete, addNotification]);
+  }, [timer.isActive, timer.endTime, handleTimerComplete, addNotification, settings.notificationsEnabled]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TIMER, JSON.stringify(timer));
@@ -301,27 +331,29 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const endTime = Date.now() + duration * 1000;
     setTimer(prev => ({ ...prev, isActive: true, endTime }));
     
-    addNotification({
-      title: "Focus Initiated",
-      message: `${Math.floor(duration / 60)}m ${timer.mode} protocol active.`,
-      icon: Target,
-      type: 'TIMER',
-      priority: 'LOW'
-    });
+    if (settings.notificationsEnabled) {
+      addNotification({
+        title: "Focus Initiated",
+        message: `${Math.floor(duration / 60)}m ${timer.mode} protocol active.`,
+        icon: Target,
+        type: 'TIMER',
+        priority: 'LOW'
+      });
+    }
   };
 
   const pauseTimer = () => {
-    setTimer(prev => ({ ...prev, isActive: true, endTime: null })); // isActive stays true to show it's "paused" but state is active? 
-    // Actually, timer.isActive means it's RUNNING.
     setTimer(prev => ({ ...prev, isActive: false, endTime: null }));
     
-    addNotification({
-      title: "Focus Paused",
-      message: "Neural synchronization suspended.",
-      icon: Coffee,
-      type: 'TIMER',
-      priority: 'LOW'
-    });
+    if (settings.notificationsEnabled) {
+      addNotification({
+        title: "Focus Paused",
+        message: "Neural synchronization suspended.",
+        icon: Coffee,
+        type: 'TIMER',
+        priority: 'LOW'
+      });
+    }
   };
 
   const resetTimer = () => {
@@ -333,13 +365,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const duration = getDurationForMode(mode);
     setTimer(prev => ({ ...prev, mode, timeLeft: duration, duration, isActive: false, endTime: null }));
     
-    addNotification({
-      title: "Mode Shift",
-      message: `Switched to ${mode}. Optimizing parameters.`,
-      icon: BrainCircuit,
-      type: 'AI',
-      priority: 'MEDIUM'
-    });
+    if (settings.notificationsEnabled) {
+      addNotification({
+        title: "Mode Shift",
+        message: `Switched to ${mode}. Optimizing parameters.`,
+        icon: BrainCircuit,
+        type: 'AI',
+        priority: 'MEDIUM'
+      });
+    }
   };
 
   useEffect(() => { if (user) localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user)); }, [user]);
@@ -348,6 +382,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.KNOWLEDGE_MAP, JSON.stringify(knowledgeMap)); }, [knowledgeMap]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes)); }, [notes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs)); }, [logs]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
 
   useEffect(() => {
     socketRef.current = io('http://localhost:3001');
@@ -372,13 +407,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const newTask: Task = { ...task, id: crypto.randomUUID(), completed: false };
     setTasks(prev => [...prev, newTask]);
     
-    addNotification({
-      title: "Mission Deployed",
-      message: `New objective: ${task.title}`,
-      icon: Target,
-      type: 'SCHEDULE',
-      priority: 'LOW'
-    });
+    if (settings.notificationsEnabled) {
+      addNotification({
+        title: "Mission Deployed",
+        message: `New objective: ${task.title}`,
+        icon: Target,
+        type: 'SCHEDULE',
+        priority: 'LOW'
+      });
+    }
   };
 
   const updateTask = (id: string, updates: Partial<Task>) => {
@@ -387,13 +424,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const original = prev.find(t => t.id === id);
       
       if (updates.completed && !original?.completed) {
-        addNotification({
-          title: "Objective Secured",
-          message: `Strategic mission '${original?.title}' completed.`,
-          icon: CheckCircle2,
-          type: 'SCHEDULE',
-          priority: 'MEDIUM'
-        });
+        if (settings.notificationsEnabled) {
+          addNotification({
+            title: "Objective Secured",
+            message: `Strategic mission '${original?.title}' completed.`,
+            icon: CheckCircle2,
+            type: 'SCHEDULE',
+            priority: 'MEDIUM'
+          });
+        }
         updateXp(100);
       }
       
@@ -436,13 +475,35 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteNote = (id: string) => setNotes(prev => prev.filter(n => n.id !== id));
 
+  const updateSettings = (updates: Partial<AppSettings>) => {
+    setSettings(prev => {
+      const newSettings = { ...prev, ...updates };
+      // If duration changed and timer is not active, update current timer
+      if (updates.durations && !timer.isActive) {
+        const newDuration = (updates.durations[timer.mode] || prev.durations[timer.mode]) * 60;
+        setTimer(t => ({ ...t, timeLeft: newDuration, duration: newDuration }));
+      }
+      return newSettings;
+    });
+  };
+
+  const resetSettings = () => {
+    setSettings(DEFAULT_SETTINGS);
+    if (!timer.isActive) {
+      const newDuration = DEFAULT_SETTINGS.durations[timer.mode] * 60;
+      setTimer(t => ({ ...t, timeLeft: newDuration, duration: newDuration }));
+    }
+  };
+
   return (
     <GlobalContext.Provider value={{
       user, setUser, missions, setMissions, tasks, setTasks, knowledgeMap, setKnowledgeMap, notes, setNotes,
       timer, startTimer, pauseTimer, resetTimer, setTimerMode,
       updateXp, hasOnboarded: !!user, completeOnboarding,
       addTask, updateTask, deleteTask, addKnowledgeNode, deleteKnowledgeNode,
-      addNote, deleteNote, analytics
+      addNote, deleteNote, analytics,
+      settings, updateSettings, resetSettings,
+      activeTab, setActiveTab
     }}>
       {children}
     </GlobalContext.Provider>

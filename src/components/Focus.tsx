@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, BrainCircuit, ListTodo, Settings, BellRing, Clock, Plus } from 'lucide-react';
+import { Zap, BrainCircuit, ListTodo, Settings, BellRing, Clock } from 'lucide-react';
 import { useGlobal, StudyMode } from '../context/GlobalContext';
+import { Tab } from '../types';
 
 export default function Focus() {
   const { 
@@ -11,16 +12,18 @@ export default function Focus() {
     pauseTimer, 
     resetTimer: resetGlobalTimer, 
     setTimerMode,
-    addTask
+    addTask,
+    settings,
+    setActiveTab
   } = useGlobal();
 
-  const [showSettings, setShowSettings] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
   // Sound effects
   const playAlarm = () => {
+    if (!settings.soundEnabled) return;
     try {
       const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
       audio.play().catch(e => console.log('Audio play failed', e));
@@ -84,28 +87,11 @@ export default function Focus() {
       <div className="flex-1 flex flex-col items-center justify-center p-8 relative">
         {/* Settings Toggle */}
         <button 
-          onClick={() => setShowSettings(!showSettings)}
+          onClick={() => setActiveTab(Tab.SETTINGS)}
           className="absolute top-4 right-4 p-3 bg-slate-800 text-slate-400 rounded-full border-2 border-black hover:text-white hover:bg-slate-700 transition-colors z-20"
         >
           <Settings size={20} />
         </button>
-
-        {showSettings && (
-          <div className="absolute top-20 right-4 bg-[#1d1e2e] p-6 rounded-xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] z-20 w-72">
-            <h3 className="font-lexend font-black uppercase text-violet-400 mb-4">Timer Protocols</h3>
-            <div className="space-y-4">
-              <div className="p-3 bg-black/40 rounded-lg border border-white/5">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Current Mode</p>
-                <p className="text-sm font-black text-white italic">{timer.mode}</p>
-              </div>
-              <div className="p-3 bg-black/40 rounded-lg border border-white/5">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Intensity</p>
-                <p className="text-sm font-black text-cyan-400 italic">MAXIMUM</p>
-              </div>
-            </div>
-            <button onClick={() => setShowSettings(false)} className="w-full mt-6 bg-violet-500 text-white font-black py-2 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all uppercase text-xs">Close Link</button>
-          </div>
-        )}
 
         {/* Top Badge */}
         <div className="bg-[#facc15] text-black px-6 py-2 rounded-sm border-2 border-black font-lexend font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transform -rotate-2 mb-12 flex items-center gap-2">

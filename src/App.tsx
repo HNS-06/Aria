@@ -8,7 +8,7 @@ import {
   NotebookPen, 
   Trophy, 
   FileText, 
-  Settings, 
+  Settings as SettingsIcon, 
   LogOut,
   Search,
   Bell,
@@ -35,10 +35,10 @@ const Notes = lazy(() => import('./components/Notes'));
 const HallOfFame = lazy(() => import('./components/HallOfFame.tsx'));
 const PDFLab = lazy(() => import('./components/PDFLab'));
 const Focus = lazy(() => import('./components/Focus'));
+const Settings = lazy(() => import('./components/Settings'));
 
 export default function App() {
-  const { hasOnboarded, user, setUser, addTask, addKnowledgeNode, addNote } = useGlobal();
-  const [activeTab, setActiveTab] = useState<Tab>(Tab.HQ);
+  const { hasOnboarded, user, setUser, addTask, addKnowledgeNode, addNote, activeTab, setActiveTab } = useGlobal();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   
   // Quick Add State
@@ -105,6 +105,7 @@ export default function App() {
         {activeTab === Tab.NOTES && <Notes />}
         {activeTab === Tab.HALL_OF_FAME && <HallOfFame />}
         {activeTab === Tab.PDF_LAB && <PDFLab />}
+        {activeTab === Tab.SETTINGS && <Settings />}
       </Suspense>
     );
   };
@@ -156,8 +157,10 @@ export default function App() {
             Start Focus
           </button>
           <div className="space-y-1">
-            <button className="w-full text-slate-400 flex items-center gap-3 px-2 py-1 text-sm hover:text-white transition-colors group">
-              <Settings size={18} className="group-hover:rotate-45 transition-transform" />
+            <button 
+              onClick={() => setActiveTab(Tab.SETTINGS)}
+              className={`w-full flex items-center gap-3 px-2 py-1 text-sm transition-colors group ${activeTab === Tab.SETTINGS ? 'text-cyan-400' : 'text-slate-400 hover:text-white'}`}>
+              <SettingsIcon size={18} className="group-hover:rotate-45 transition-transform" />
               <span className="font-bold uppercase text-[10px] tracking-widest">Settings</span>
             </button>
             <button 

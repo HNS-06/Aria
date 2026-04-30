@@ -6,7 +6,8 @@ export enum Tab {
   NOTES = 'notes',
   HALL_OF_FAME = 'hall_of_fame',
   PDF_LAB = 'pdf_lab',
-  FOCUS = 'focus'
+  FOCUS = 'focus',
+  SETTINGS = 'settings'
 }
 
 export enum SystemEvent {
@@ -30,4 +31,16 @@ export interface UserStats {
   rank: string;
   focusScore: number;
   timeStudied: number;
+}
+
+export interface AppSettings {
+  theme: 'dark' | 'light' | 'amoled';
+  durations: {
+    [key: string]: number; // minutes
+  };
+  notificationsEnabled: boolean;
+  soundEnabled: boolean;
+  aiSchedulingEnabled: boolean;
+  autoStartBreaks: boolean;
+  autoStartFocus: boolean;
 }
