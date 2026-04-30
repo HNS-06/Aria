@@ -20,7 +20,8 @@ import {
   X,
   PlusCircle,
   Network,
-  StickyNote
+  StickyNote,
+  Flame
 } from 'lucide-react';
 import { Tab } from './types.ts';
 import { useGlobal } from './context/GlobalContext';
