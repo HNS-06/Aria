@@ -262,9 +262,8 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
     setIsGeneratingAudio(true);
     setError(null);
     try {
-      const textToSpeak = `${summary.executiveSummary}. Key takeaways: ${summary.criticalTakeaways.join('. ')}`;
-      const base64Audio = await generateAudioBriefing(textToSpeak);
-      await playPCM(base64Audio);
+      const textToSpeak = `${summary.executiveSummary}. Here are the critical takeaways: ${summary.criticalTakeaways.join('. ')}`;
+      await speakText(textToSpeak);
     } catch (err) {
       console.error(err);
       setError("Audio Synthesis Failed. Neural voice processors offline.");
@@ -273,34 +272,30 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
     }
   };
 
-  const playPCM = async (base64Data: string) => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      const binaryString = atob(base64Data);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+  const speakText = (text: string) => {
+    return new Promise((resolve, reject) => {
+      if (!('speechSynthesis' in window)) {
+        reject(new Error("Neural voice processors not found in this browser."));
+        return;
       }
+
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9; // Authoritative, slightly slower
+      utterance.pitch = 0.8; // Deeper, commander voice
       
-      const pcm16 = new Int16Array(bytes.buffer);
-      const float32 = new Float32Array(pcm16.length);
-      
-      for (let i = 0; i < pcm16.length; i++) {
-        float32[i] = pcm16[i] / 32768;
-      }
-      
-      const buffer = audioContext.createBuffer(1, float32.length, 24000);
-      buffer.getChannelData(0).set(float32);
-      
-      const source = audioContext.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioContext.destination);
-      source.start();
-    } catch (err) {
-      console.error("Audio Playback Error:", err);
-      throw err;
-    }
+      // Try to find a good premium voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const premiumVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Premium') || v.name.includes('Male'));
+      if (premiumVoice) utterance.voice = premiumVoice;
+
+      utterance.onend = () => resolve(true);
+      utterance.onerror = (e) => reject(e);
+
+      window.speechSynthesis.speak(utterance);
+    });
   };
 
   return (
@@ -333,7 +328,7 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
                 </button>
              </div>
 
-             <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-0">
+             <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-8 min-h-0">
                 {/* Left Side: Summary Intel */}
                 <div className="flex flex-col min-h-0 glass-panel bg-black/40 border-slate-800 p-6 overflow-hidden">
                    <div className="flex items-center gap-2 mb-6">
@@ -413,10 +408,10 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
                 </div>
 
                 {/* Right Side: Tactical Tutor */}
-                <div className="flex flex-col min-h-0 glass-panel bg-slate-900/50 border-slate-800 p-6 overflow-hidden">
+                <div className="flex flex-col min-h-0 glass-panel bg-slate-900/50 border-slate-800 p-8 overflow-hidden lg:col-span-2">
                    <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4">
-                      <BrainCircuit size={18} className="text-cyan-400" />
-                      <h3 className="font-lexend font-black uppercase text-sm tracking-widest">Tactical Tutor</h3>
+                      <BrainCircuit size={20} className="text-cyan-400" />
+                      <h3 className="font-lexend font-black uppercase text-lg tracking-widest text-white">Neural Link Tutor</h3>
                    </div>
                    
                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 scrollbar-hide">
@@ -427,8 +422,8 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
                       )}
                       {tutorMessages.map((msg, i) => (
                         <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                           <div className={`p-3 rounded-xl border border-black text-[11px] leading-relaxed max-w-[90%] ${
-                             msg.role === 'user' ? 'bg-cyan-400 text-black font-bold' : 'bg-black text-slate-300'
+                           <div className={`p-4 rounded-2xl border-2 border-black text-sm leading-relaxed max-w-[85%] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] ${
+                             msg.role === 'user' ? 'bg-cyan-400 text-black font-bold rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none border-slate-700'
                            }`}>
                              {msg.content}
                            </div>
@@ -893,7 +888,10 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
                         </div>
                     </section>
 
-                    <button className="w-full bg-white text-black p-4 rounded-xl border-4 border-black font-lexend font-black uppercase tracking-widest shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-cyan-400 transition-all active:translate-x-1 active:translate-y-1 active:shadow-none">
+                    <button 
+                      onClick={() => setIsStudyMode(true)}
+                      className="w-full bg-white text-black p-4 rounded-xl border-4 border-black font-lexend font-black uppercase tracking-widest shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-cyan-400 transition-all active:translate-x-1 active:translate-y-1 active:shadow-none"
+                    >
                        Deploy Learning Path
                     </button>
                  </div>
