@@ -407,19 +407,36 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
                    </button>
                 </div>
 
-                {/* Right Side: Tactical Tutor */}
+                {/* Right Side: Neural Link Tutor */}
                 <div className="flex flex-col min-h-0 glass-panel bg-slate-900/50 border-slate-800 p-8 overflow-hidden lg:col-span-2">
-                   <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4">
-                      <BrainCircuit size={20} className="text-cyan-400" />
-                      <h3 className="font-lexend font-black uppercase text-lg tracking-widest text-white">Neural Link Tutor</h3>
+                   <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-cyan-400/20 flex items-center justify-center border-2 border-cyan-400">
+                          <BrainCircuit size={20} className="text-cyan-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-lexend font-black uppercase text-xl tracking-widest text-white">Neural Link Tutor</h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                            <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Neural Uplink Active</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Sparkles size={18} className="text-violet-400 opacity-60" />
                    </div>
                    
                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 scrollbar-hide">
-                      {tutorMessages.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center text-center p-4 opacity-40 italic">
-                           <p className="text-[10px] font-bold uppercase tracking-widest">Awaiting tactical query...</p>
-                        </div>
-                      )}
+                       {tutorMessages.length === 0 && (
+                         <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-4">
+                           <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center">
+                             <BrainCircuit size={28} className="text-slate-600" />
+                           </div>
+                           <div>
+                             <p className="text-sm font-black uppercase tracking-widest text-slate-500">Neural Link Ready</p>
+                             <p className="text-[11px] text-slate-600 mt-2 font-medium max-w-xs mx-auto leading-relaxed">Ask anything about your document — concepts, definitions, exam questions, or summaries.</p>
+                           </div>
+                         </div>
+                       )}
                       {tutorMessages.map((msg, i) => (
                         <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                            <div className={`p-4 rounded-2xl border-2 border-black text-sm leading-relaxed max-w-[85%] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] ${
@@ -429,31 +446,31 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
                            </div>
                         </div>
                       ))}
-                      {isAskingTutor && (
-                        <div className="flex justify-start">
-                           <div className="animate-pulse flex items-center gap-2 text-[10px] text-cyan-400 font-black">
-                              <Loader2 size={12} className="animate-spin" />
-                              ANALYZING...
-                           </div>
-                        </div>
-                      )}
+                       {isAskingTutor && (
+                         <div className="flex justify-start">
+                            <div className="bg-slate-800 border-2 border-slate-700 rounded-2xl rounded-tl-none p-4 flex items-center gap-2">
+                               <Loader2 size={14} className="animate-spin text-cyan-400" />
+                               <span className="text-xs text-slate-400 font-bold">Analyzing...</span>
+                            </div>
+                         </div>
+                       )}
                    </div>
 
-                   <form onSubmit={handleAskTutor} className="flex gap-2">
-                     <input 
-                       value={tutorInput}
-                       onChange={(e) => setTutorInput(e.target.value)}
-                       placeholder="ASK TUTOR..."
-                       className="flex-1 bg-black border-2 border-slate-800 rounded px-3 py-2 text-[10px] font-black uppercase text-white outline-none focus:border-cyan-400"
-                     />
-                     <button 
-                       type="submit"
-                       disabled={!tutorInput.trim() || isAskingTutor}
-                       className="bg-cyan-400 text-black px-3 rounded font-black uppercase text-[10px] disabled:opacity-30"
-                     >
+                    <form onSubmit={handleAskTutor} className="flex gap-3 mt-2">
+                      <input 
+                        value={tutorInput}
+                        onChange={(e) => setTutorInput(e.target.value)}
+                        placeholder="Ask about your document..."
+                        className="flex-1 bg-slate-800 border-2 border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-white outline-none focus:border-cyan-400 placeholder:text-slate-500 transition-colors"
+                      />
+                      <button 
+                        type="submit"
+                        disabled={!tutorInput.trim() || isAskingTutor}
+                        className="bg-cyan-400 text-black px-5 py-3 rounded-xl font-lexend font-black uppercase text-xs tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white transition-all border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0"
+                      >
                         Send
-                     </button>
-                   </form>
+                      </button>
+                    </form>
                 </div>
              </div>
           </motion.div>

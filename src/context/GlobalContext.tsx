@@ -242,6 +242,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const socketRef = useRef<Socket | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const warnedRef = useRef(false);
+  const timerEndTimeRef = useRef<number | null>(null);
+  const timerIsActiveRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const playAlarm = useCallback(() => {
@@ -340,84 +342,112 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const extendBreak = (extend: boolean) => {
     setTimer(prev => {
       if (extend) {
-        const extension = 5 * 60; // 5 more minutes
-        return { 
-          ...prev, 
-          isActive: true, 
-          timeLeft: extension, 
+        const extension = 5 * 60;
+        const newEndTime = Date.now() + extension * 1000;
+        timerEndTimeRef.current = newEndTime;
+        return {
+          ...prev,
+          isActive: true,
+          timeLeft: extension,
           duration: extension,
-          endTime: Date.now() + extension * 1000,
+          endTime: newEndTime,
           isBreak: true,
-          showBreakPrompt: false 
+          showBreakPrompt: false
         };
       } else {
-        // Continue rest of time (if any) or reset
-        const remainingInOriginal = prev.timeLeft; 
-        if (remainingInOriginal > 0) {
-           return { ...prev, isBreak: false, showBreakPrompt: false, isActive: true, endTime: Date.now() + remainingInOriginal * 1000 };
-        }
-        return { ...prev, isBreak: false, showBreakPrompt: false, isActive: false, timeLeft: 0 };
+        // Resume focus — go back to the original session's remaining time
+        const originalDuration = getDurationForMode(prev.mode);
+        const resumeEndTime = Date.now() + originalDuration * 1000;
+        timerEndTimeRef.current = resumeEndTime;
+        warnedRef.current = false;
+        return {
+          ...prev,
+          isBreak: false,
+          showBreakPrompt: false,
+          isActive: true,
+          timeLeft: originalDuration,
+          duration: originalDuration,
+          endTime: resumeEndTime,
+          accumulatedFocus: 0
+        };
       }
     });
   };
 
+  // Sync refs every render so the interval always reads fresh values
   useEffect(() => {
-    if (timer.isActive && timer.endTime) {
-      timerIntervalRef.current = setInterval(() => {
-        const remaining = Math.max(0, Math.ceil((timer.endTime! - Date.now()) / 1000));
-        
-        // 1 minute warning
-        if (remaining <= 60 && remaining > 55 && !warnedRef.current && settings.notificationsEnabled) {
-          warnedRef.current = true;
-          addNotification({
-            title: "1 Minute Remaining",
-            message: "Prepare to wrap up your current focus unit.",
-            icon: Clock,
-            type: 'TIMER',
-            priority: 'MEDIUM'
-          });
+    timerEndTimeRef.current = timer.endTime;
+    timerIsActiveRef.current = timer.isActive;
+  });
+
+  // Single clean interval — re-created only when isActive/endTime changes
+  useEffect(() => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    if (!timer.isActive || !timer.endTime) return;
+
+    timerIntervalRef.current = setInterval(() => {
+      const currentEndTime = timerEndTimeRef.current;
+      if (!currentEndTime || !timerIsActiveRef.current) return;
+
+      const remaining = Math.max(0, Math.ceil((currentEndTime - Date.now()) / 1000));
+
+      // 1 minute warning
+      if (remaining <= 60 && remaining > 55 && !warnedRef.current && settings.notificationsEnabled) {
+        warnedRef.current = true;
+        addNotification({
+          title: "1 Minute Remaining",
+          message: "Prepare to wrap up your current focus unit.",
+          icon: Clock,
+          type: 'TIMER',
+          priority: 'MEDIUM'
+        });
+      }
+
+      if (remaining <= 0) {
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        handleTimerComplete();
+        return;
+      }
+
+      setTimer(prev => {
+        if (!prev.isActive) return prev;
+
+        // 20-minute break trigger
+        if (!prev.isBreak) {
+          const nextAccumulated = prev.accumulatedFocus + 1;
+          if (nextAccumulated >= 1200) {
+            playAlarm();
+            if (settings.notificationsEnabled) {
+              addNotification({
+                title: "Tactical Break Required",
+                message: "20 minutes of focus reached. Initiating 5-minute Neural Recovery.",
+                icon: Coffee,
+                type: 'TIMER',
+                priority: 'HIGH'
+              });
+            }
+            const breakDuration = 5 * 60;
+            const newEndTime = Date.now() + breakDuration * 1000;
+            timerEndTimeRef.current = newEndTime; // update ref instantly for next tick
+            return {
+              ...prev,
+              isBreak: true,
+              timeLeft: breakDuration,
+              duration: breakDuration,
+              endTime: newEndTime,
+              accumulatedFocus: 0
+            };
+          }
+          return { ...prev, timeLeft: remaining, accumulatedFocus: nextAccumulated };
         }
 
-        if (remaining <= 0) {
-          if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-          handleTimerComplete();
-        } else {
-          setTimer(prev => {
-            let nextAccumulated = prev.accumulatedFocus;
-            if (!prev.isBreak) {
-              nextAccumulated += 1;
-              // Every 20 minutes (1200s) trigger a break
-              if (nextAccumulated >= 1200) {
-                playAlarm();
-                if (settings.notificationsEnabled) {
-                  addNotification({
-                    title: "Tactical Break Required",
-                    message: "20 minutes of focus reached. Initiating 5-minute recovery.",
-                    icon: Coffee,
-                    type: 'TIMER',
-                    priority: 'HIGH'
-                  });
-                }
-                const breakDuration = 5 * 60;
-                return { 
-                  ...prev, 
-                  isBreak: true, 
-                  timeLeft: breakDuration, 
-                  duration: breakDuration,
-                  endTime: Date.now() + breakDuration * 1000,
-                  accumulatedFocus: 0 
-                };
-              }
-            }
-            return { ...prev, timeLeft: remaining, accumulatedFocus: nextAccumulated };
-          });
-        }
-      }, 1000);
-    } else {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    }
+        // Break countdown ticking
+        return { ...prev, timeLeft: remaining };
+      });
+    }, 1000);
+
     return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
-  }, [timer.isActive, timer.endTime, handleTimerComplete, addNotification, settings.notificationsEnabled]);
+  }, [timer.isActive, timer.endTime]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TIMER, JSON.stringify(timer));
