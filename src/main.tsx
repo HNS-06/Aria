@@ -79,6 +79,12 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
+// Official Vite preload error listener
+window.addEventListener('vite:preloadError', (event) => {
+  console.warn('[System] Module preload failure detected. Re-synchronizing interface...');
+  window.location.reload();
+});
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
