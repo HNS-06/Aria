@@ -25,6 +25,10 @@ import {
   Volume2
 } from 'lucide-react';
 import { generateFlashcards, summarizeIntel, askTacticalTutor, generateAudioBriefing, type IntelSummary, type Flashcard } from '../services/geminiService';
+import * as pdfjs from 'pdfjs-dist';
+
+// Configure pdfjs worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export default function PDFLab() {
   const [files, setFiles] = useState<File[]>([]);
@@ -129,34 +133,51 @@ export default function PDFLab() {
     }
   };
 
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(' ');
+      fullText += pageText + '\n';
+    }
+    
+    return fullText;
+  };
+
   const handleScan = async () => {
     if (files.length === 0) return;
     
     setIsScanning(true);
     setError(null);
     
-    // Step 1: Simulate the "Structural Scan"
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    const mockScan = {
-      topic: files.length > 1 ? `${files.length} Intelligence Units Integrated` : files[0].name,
-      difficulty: 'Heroic',
-      keyConcepts: ['Unified Field Theory', 'Quantum Entanglement', 'Core Syllabus Synchronization'],
-      estimatedStudyTime: `${3.5 * files.length} Hours`,
-      confidenceScore: 95
-    };
-    setScanResult(mockScan);
-    setIsScanning(false);
-
-    // Step 2: Trigger the Real AI Summarization
-    setIsSummarizing(true);
     try {
-      const combinedContext = `Analyzing ${files.length} academic documents. Subject topics include advanced curriculum data and reconnaissance notes. Focus on generating a meta-summary across all provided intel.`;
+      // Step 1: Real Structural Scan & Extraction
+      const extractedTexts = await Promise.all(files.map(file => extractTextFromPDF(file)));
+      const combinedContext = extractedTexts.join('\n\n--- NEXT DOCUMENT ---\n\n');
+      
+      const mockScan = {
+        topic: files.length > 1 ? `${files.length} Intelligence Units Integrated` : files[0].name,
+        difficulty: 'Heroic',
+        keyConcepts: ['Direct Extraction Active', 'Contextual Analysis Synchronized', 'Neural Mapping Ready'],
+        estimatedStudyTime: `${Math.ceil(combinedContext.length / 1000)} Hours`,
+        confidenceScore: 98
+      };
+      setScanResult(mockScan);
+      setIsScanning(false);
+
+      // Step 2: Trigger the Real AI Summarization
+      setIsSummarizing(true);
       const result = await summarizeIntel(combinedContext);
       setSummary(result);
     } catch (err) {
       console.error(err);
-      setError("AI Transmutation Failed. Mainframe connection unstable.");
+      setError("AI Transmutation Failed. Mainframe connection unstable or PDF corrupted.");
     } finally {
+      setIsScanning(false);
       setIsSummarizing(false);
     }
   };
@@ -194,16 +215,22 @@ ${summary.actionItems.map((a, i) => `[ ] ${a}`).join('\n')}
   };
 
   const handleGenerateFlashcards = async () => {
-    if (!scanResult) return;
+    if (files.length === 0) return;
     setIsGeneratingFlashcards(true);
     setError(null);
     try {
-      const result = await generateFlashcards(scanResult.topic, scanResult.keyConcepts);
+      const extractedTexts = await Promise.all(files.map(file => extractTextFromPDF(file)));
+      const combinedContext = extractedTexts.join('\n\n');
+      
+      const result = await generateFlashcards(
+        files.length > 1 ? "Combined Intelligence" : files[0].name, 
+        combinedContext
+      );
       setFlashcards(result);
       setShowFlashcards(true);
     } catch (err) {
       console.error(err);
-      setError("Flashcard Synthesis Failed. Neural link broken.");
+      setError("Flashcard Synthesis Failed. Neural link broken or content too complex.");
     } finally {
       setIsGeneratingFlashcards(false);
     }
