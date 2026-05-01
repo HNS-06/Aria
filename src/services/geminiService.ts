@@ -81,8 +81,10 @@ export async function generateAudioBriefing(text: string): Promise<string> {
   
   return retry(async () => {
     const prompt = `Say in an authoritative, futuristic commander voice: "Attention Hero Scholar. Here is your tactical briefing." Then read this summary: ${text}`;
-    const model = ai!.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1" });
-    const response = await model.generateContent(prompt);
+    const model = ai!.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1beta" });
+    const response = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
+    });
     const result = await response.response;
     return result.text() || `Briefing: ${text}`;
   });
@@ -103,8 +105,11 @@ export async function generateFlashcards(topic: string, content: string): Promis
       const model = ai!.getGenerativeModel({ 
         model: "gemini-1.5-flash",
         generationConfig: { responseMimeType: "application/json" }
-      }, { apiVersion: "v1" });
-      const response = await model.generateContent(prompt);
+      }, { apiVersion: "v1beta" });
+      
+      const response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      });
       const result = await response.response;
       const data = JSON.parse(result.text());
       return data.flashcards || [];
@@ -147,8 +152,11 @@ export async function summarizeIntel(content: string): Promise<IntelSummary> {
       const model = ai!.getGenerativeModel({ 
         model: "gemini-1.5-flash",
         generationConfig: { responseMimeType: "application/json" }
-      }, { apiVersion: "v1" });
-      const response = await model.generateContent(prompt);
+      }, { apiVersion: "v1beta" });
+      
+      const response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      });
       const result = await response.response;
       return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.INTEL_SUMMARY);
     });
@@ -166,8 +174,11 @@ export async function analyzeMissionProgress(missions: Mission[]): Promise<Missi
       const model = ai!.getGenerativeModel({ 
         model: "gemini-1.5-flash",
         generationConfig: { responseMimeType: "application/json" }
-      }, { apiVersion: "v1" });
-      const response = await model.generateContent(prompt);
+      }, { apiVersion: "v1beta" });
+      
+      const response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      });
       const result = await response.response;
       return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.MISSION_ANALYSIS);
     });
@@ -185,8 +196,11 @@ export async function generateStudyPlan(missions: Mission[], overallXP: number, 
       const model = ai!.getGenerativeModel({ 
         model: "gemini-1.5-flash",
         generationConfig: { responseMimeType: "application/json" }
-      }, { apiVersion: "v1" });
-      const response = await model.generateContent(prompt);
+      }, { apiVersion: "v1beta" });
+      
+      const response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      });
       const result = await response.response;
       return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.STUDY_PLAN);
     });
@@ -206,8 +220,11 @@ export async function generateModuleContent(moduleName: string, syllabus: string
     const model = ai!.getGenerativeModel({ 
       model: "gemini-1.5-flash",
       generationConfig: { responseMimeType: "application/json" }
-    }, { apiVersion: "v1" });
-    const response = await model.generateContent(prompt);
+    }, { apiVersion: "v1beta" });
+    
+    const response = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
+    });
     const result = await response.response;
     return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.MODULE_CONTENT);
   });

@@ -35,10 +35,18 @@ export async function retry<T>(
       return await Promise.race([fn(), timeoutPromise]) as T;
     } catch (error: any) {
       lastError = error;
-      console.warn(`[Reliability] Attempt ${i + 1} failed: ${error.message}`);
+      
+      // Log meaningful error messages
+      if (error.message?.includes("404") || error.message?.includes("not found")) {
+        console.error(`[Reliability] CRITICAL: Model not found (404). Please verify model identifier in geminiService.ts. Attempt ${i + 1}`);
+      } else if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("401") || error.message?.includes("403")) {
+        console.error(`[Reliability] CRITICAL: Invalid API Key. Please check your .env configuration. Attempt ${i + 1}`);
+      } else {
+        console.warn(`[Reliability] Attempt ${i + 1} failed: ${error.message}`);
+      }
       
       if (error.message === "ARIA_API_TIMEOUT") {
-        // Don't wait on timeout, just retry immediately or break if last attempt
+        // Don't wait on timeout
       } else {
         await new Promise(res => setTimeout(res, delay));
         delay *= 2; // Exponential backoff
