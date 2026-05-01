@@ -76,156 +76,127 @@ const validateResponse = <T>(data: any, fallback: T): T => {
   return { ...fallback, ...data };
 };
 
-export async function generateAudioBriefing(text: string): Promise<string> {
-  if (!ai) return `Strategic Briefing: ${text}`;
+/**
+ * CORE INTELLIGENCE ROUTER
+ * Prioritizes Groq (Llama 3.1 70B) and falls back to Gemini 1.5 Flash.
+ */
+async function callIntelligence(prompt: string, isJson: boolean = true): Promise<string> {
+  const systemPrompt = "You are the ARIA Tactical Analyst. Provide precise, authoritative guidance in a futuristic, academic tone. Return only valid JSON if requested.";
   
-  return retry(async () => {
-    const prompt = `Say in an authoritative, futuristic commander voice: "Attention Hero Scholar. Here is your tactical briefing." Then read this summary: ${text}`;
-    const model = ai!.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1beta" });
-    const response = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }]
-    });
-    const result = await response.response;
-    return result.text() || `Briefing: ${text}`;
-  });
-}
+  // PRIMARY: GROQ (Llama 3.1 70B)
+  if (groq) {
+    try {
+      return await retry(async () => {
+        const chatCompletion = await groq!.chat.completions.create({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt }
+          ],
+          model: "llama-3.1-70b-versatile",
+          response_format: isJson ? { type: "json_object" } : undefined,
+        });
+        return chatCompletion.choices[0]?.message?.content || "";
+      });
+    } catch (e) {
+      console.warn("[Intelligence Router] Groq failed, switching to secondary signal...", e);
+    }
+  }
 
-export async function generateFlashcards(topic: string, content: string): Promise<Flashcard[]> {
-  if (!ai) return [{ question: `Identify core concepts of ${topic}`, answer: "AI Uplink Restricted." }];
-
-  try {
+  // SECONDARY: GEMINI (1.5 Flash)
+  if (ai) {
     return await retry(async () => {
-      const prompt = `Generate 8 high-stakes study flashcards for a Hero Scholar from this intelligence:
-      Topic: ${topic}
-      Content: ${content.substring(0, 30000)} // Limiting to fit context
-      
-      For each card, provide a challenging question and a comprehensive answer that includes a clear explanation of the underlying concept.
-      Return as JSON with a "flashcards" array of {question, answer}.`;
-
       const model = ai!.getGenerativeModel({ 
         model: "gemini-1.5-flash",
-        generationConfig: { responseMimeType: "application/json" }
+        generationConfig: isJson ? { responseMimeType: "application/json" } : undefined
       }, { apiVersion: "v1beta" });
       
       const response = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }]
       });
       const result = await response.response;
-      const data = JSON.parse(result.text());
-      return data.flashcards || [];
+      return result.text();
     });
+  }
+
+  throw new Error("NEURAL LINK SEVERED: No AI providers available.");
+}
+
+export async function generateAudioBriefing(text: string): Promise<string> {
+  try {
+    const prompt = `Say in an authoritative, futuristic commander voice: "Attention Hero Scholar. Here is your tactical briefing." Then read this summary: ${text}`;
+    return await callIntelligence(prompt, false);
   } catch (e) {
-    console.error("Flashcard generation failed, using fallback", e);
+    return `Strategic Briefing: ${text}`;
+  }
+}
+
+export async function generateFlashcards(topic: string, content: string): Promise<Flashcard[]> {
+  try {
+    const prompt = `Generate 8 high-stakes study flashcards for a Hero Scholar from this intelligence:
+    Topic: ${topic}
+    Content: ${content.substring(0, 30000)}
+    Return JSON with a "flashcards" array of {question, answer}. Ensure the answer includes a deep explanation.`;
+
+    const result = await callIntelligence(prompt);
+    const data = JSON.parse(result);
+    return data.flashcards || [];
+  } catch (e) {
+    console.error("Flashcard generation failed", e);
     return [{ question: `Identify core concepts of ${topic}`, answer: "Neural synthesis interrupted." }];
   }
 }
 
 export async function askTacticalTutor(question: string, context: string): Promise<string> {
-  if (!groq) return "AI Uplink restricted. Re-establish Groq connection.";
-
-  return retry(async () => {
-    const prompt = `Tactical Query: "${question}"\nContext: ${context}`;
-    const chatCompletion = await groq!.chat.completions.create({
-      messages: [
-        { role: "system", content: "You are the ARIA Tactical Analyst. Provide precise guidance." },
-        { role: "user", content: prompt }
-      ],
-      model: "llama-3.1-8b-instant",
-    });
-    return chatCompletion.choices[0]?.message?.content || "Signal interference detected.";
-  });
+  try {
+    const prompt = `Tactical Query: "${question}"\nContext: ${context}\nProvide a direct, high-fidelity response.`;
+    return await callIntelligence(prompt, false);
+  } catch (e) {
+    return "AI Uplink restricted. Re-establish connections.";
+  }
 }
 
 export async function summarizeIntel(content: string): Promise<IntelSummary> {
-  if (!ai) return MOCK_RESPONSES.INTEL_SUMMARY;
-
   try {
-    return await retry(async () => {
-      const prompt = `Perform a high-density academic synthesis of the following intelligence:
-      ${content.substring(0, 40000)}
-      
-      Return as JSON with these keys:
-      - executiveSummary: A powerful, authoritative summary of the core thesis.
-      - criticalTakeaways: A string array of the 5 most vital concepts.
-      - actionItems: A string array of specific study/review tasks based on the content.`;
+    const prompt = `Perform a high-density academic synthesis of the following intelligence:
+    ${content.substring(0, 40000)}
+    Return JSON: { executiveSummary, criticalTakeaways: [string], actionItems: [string] }`;
 
-      const model = ai!.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        generationConfig: { responseMimeType: "application/json" }
-      }, { apiVersion: "v1beta" });
-      
-      const response = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      });
-      const result = await response.response;
-      return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.INTEL_SUMMARY);
-    });
+    const result = await callIntelligence(prompt);
+    return validateResponse(JSON.parse(result), MOCK_RESPONSES.INTEL_SUMMARY);
   } catch (e) {
     return MOCK_RESPONSES.INTEL_SUMMARY;
   }
 }
 
 export async function analyzeMissionProgress(missions: Mission[]): Promise<MissionAnalysis> {
-  if (!ai) return MOCK_RESPONSES.MISSION_ANALYSIS;
-
   try {
-    return await retry(async () => {
-      const prompt = `Diagnostic Scan: ${JSON.stringify(missions)}. Return JSON: { bottlenecks: [{ missionId, issue, suggestion }], victories: [{ missionId, strength }], overallStatus: string }`;
-      const model = ai!.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        generationConfig: { responseMimeType: "application/json" }
-      }, { apiVersion: "v1beta" });
-      
-      const response = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      });
-      const result = await response.response;
-      return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.MISSION_ANALYSIS);
-    });
+    const prompt = `Diagnostic Scan: ${JSON.stringify(missions)}. Return JSON: { bottlenecks: [{ missionId, issue, suggestion }], victories: [{ missionId, strength }], overallStatus: string }`;
+    const result = await callIntelligence(prompt);
+    return validateResponse(JSON.parse(result), MOCK_RESPONSES.MISSION_ANALYSIS);
   } catch (e) {
     return MOCK_RESPONSES.MISSION_ANALYSIS;
   }
 }
 
 export async function generateStudyPlan(missions: Mission[], overallXP: number, level: number, focusTime: number): Promise<StudyPlan> {
-  if (!ai) return MOCK_RESPONSES.STUDY_PLAN;
-
   try {
-    return await retry(async () => {
-      const prompt = `Generate study plan: Level ${level}, XP ${overallXP}, Missions ${JSON.stringify(missions)}, Time ${focusTime}m. Return JSON: { prioritizedMissions: [{ missionId, reason, priority, suggestedFocusMinutes }], strategicAdvice: string }`;
-      const model = ai!.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        generationConfig: { responseMimeType: "application/json" }
-      }, { apiVersion: "v1beta" });
-      
-      const response = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      });
-      const result = await response.response;
-      return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.STUDY_PLAN);
-    });
+    const prompt = `Generate study plan: Level ${level}, XP ${overallXP}, Missions ${JSON.stringify(missions)}, Time ${focusTime}m. Return JSON: { prioritizedMissions: [{ missionId, reason, priority, suggestedFocusMinutes }], strategicAdvice: string }`;
+    const result = await callIntelligence(prompt);
+    return validateResponse(JSON.parse(result), MOCK_RESPONSES.STUDY_PLAN);
   } catch (e) {
     return MOCK_RESPONSES.STUDY_PLAN;
   }
 }
 
 export async function generateModuleContent(moduleName: string, syllabus: string): Promise<ModuleContent> {
-  if (!ai) return MOCK_RESPONSES.MODULE_CONTENT;
-
-  return retry(async () => {
+  try {
     const prompt = `Synthesize educational intel for Module: "${moduleName}".
     Syllabus Context: "${syllabus}"
     Return JSON: { notes: string, importantTopics: [string], definitions: [{term, definition}], equations: [{formula, explanation}], keyPoints: [string] }`;
 
-    const model = ai!.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    }, { apiVersion: "v1beta" });
-    
-    const response = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }]
-    });
-    const result = await response.response;
-    return validateResponse(JSON.parse(result.text()), MOCK_RESPONSES.MODULE_CONTENT);
-  });
+    const result = await callIntelligence(prompt);
+    return validateResponse(JSON.parse(result), MOCK_RESPONSES.MODULE_CONTENT);
+  } catch (e) {
+    return MOCK_RESPONSES.MODULE_CONTENT;
+  }
 }

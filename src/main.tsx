@@ -62,6 +62,23 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {error:
   }
 }
 
+// Global recovery for dynamic import failures outside of React's lifecycle
+window.addEventListener('unhandledrejection', (event) => {
+  const isChunkError = event.reason && (
+    event.reason.message?.includes('Failed to fetch dynamically imported module') ||
+    event.reason.name === 'TypeError' && event.reason.message?.includes('import')
+  );
+  
+  if (isChunkError) {
+    const lastReload = localStorage.getItem('aria_last_chunk_reload');
+    const now = Date.now();
+    if (!lastReload || now - parseInt(lastReload) > 10000) {
+      localStorage.setItem('aria_last_chunk_reload', now.toString());
+      window.location.reload();
+    }
+  }
+});
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
